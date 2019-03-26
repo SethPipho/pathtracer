@@ -20,11 +20,11 @@ class Sphere {
         Sphere(vec3 c, double r, vec3 col){center = c; radius = r; color = col;}
 };
 
-double raySphereIntersection(Ray r, Sphere s){
-    vec3 oc = r.origin - s.center;
+double raySphereIntersection(Ray r, Sphere *s){
+    vec3 oc = r.origin - s->center;
     double a = dot(r.direction, r.direction);
     double b = 2.0 * dot(oc, r.direction);
-    double c = dot(oc, oc) - s.radius * s.radius;
+    double c = dot(oc, oc) - s->radius * s->radius;
     double discriminant = b * b - 4 * a * c;
     if (discriminant <= 0){
         return -1;
@@ -57,12 +57,11 @@ int main(){
     double v_width = 4;
     double v_height = 4;
    
-    int num_spheres = 2;
-    Sphere *spheres[2];
+    int num_spheres = 3;
+    Sphere *spheres[3];
     spheres[0] = new Sphere(vec3(-1,-1,-5), 2, rgbToVec(231, 76, 60));
     spheres[1] = new Sphere(vec3(1,1,-5), 2, rgbToVec(52, 152, 219));
-
-
+    spheres[2] = new Sphere(vec3(1.5,-1.5,-5), 2, rgbToVec(46, 204, 113));
 
     int samples = 16;
 
@@ -74,7 +73,7 @@ int main(){
 
     for (int y = 0; y < canvas.height; y++){
         for (int x = 0; x < canvas.width; x++){
-            vec3 sum(0,0,0);
+            vec3 color(0,0,0);
             for (int i = 0; i < samples; i++){
 
                 
@@ -88,7 +87,7 @@ int main(){
                 Sphere *closest;
 
                 for (int j = 0; j < num_spheres; j++){
-                    t = raySphereIntersection(r, *spheres[j]);
+                    t = raySphereIntersection(r, spheres[j]);
                     if (t > 0 && closest_dist > t){
                         closest_dist = t;
                         closest = spheres[j];
@@ -102,18 +101,17 @@ int main(){
                     vec3 L = light - hit;
                     vec3 light_dir = unit(L);
                     double light_dist = L.length();
-                    vec3 color = closest->color * (light_color * light_intensity * dot(normal, light_dir)/light_dist + ambient_light);
+                    color += closest->color * (light_color * light_intensity * dot(normal, light_dir)/light_dist + ambient_light);
                     //sum +=  vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
-                    sum += color;
                 } else {
-                    sum += vec3(.9,.9,.9);
+                    color += vec3(.9,.9,.9);
                 }
 
             }
 
-            int r = int (clamp(sum.x/samples, 0, 1) * 255);
-            int g = int (clamp(sum.y/samples, 0, 1) * 255);
-            int b = int (clamp(sum.z/samples, 0, 1) * 255);
+            int r = int (clamp(color.x/samples, 0, 1) * 255);
+            int g = int (clamp(color.y/samples, 0, 1) * 255);
+            int b = int (clamp(color.z/samples, 0, 1) * 255);
 
             canvas.setPixel(x,y,r,g, b);
 
