@@ -7,7 +7,7 @@
 class vec3 {
     public:
         double x,y,z;
-        vec3(){}
+        vec3(){x =0; y = 0; z = 0;}
         vec3(double _x, double _y, double _z){x = _x; y = _y; z = _z;}
 
         inline vec3& operator+=(const vec3 &v);
