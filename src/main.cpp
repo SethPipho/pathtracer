@@ -17,17 +17,19 @@ vec3 rgbToVec(int r, int g, int b);
 int main(){
     Canvas canvas(512, 512);
 
+    //projection plane
     double v_width = 2;
     double v_height = 2;
     double v_depth = 4;
 
-    double wall_r = 100000;
+    double wall_r = 100000; //radius for wall spheres
    
     Scene scene;
-    scene.addObject(new Sphere(vec3(-.5, -2,10), 1, rgbToVec(231, 76, 60)));
-    scene.addObject(new Sphere(vec3(.5, -1, 9.5), 1, rgbToVec(52, 152, 219)));
-    scene.addObject(new Sphere(vec3(-.5, -1,10.5), 1, rgbToVec(52, 240, 50)));
-    
+    scene.addObject(new Sphere(vec3(-.5, -2,10), 1, rgbToVec(231, 76, 60))); //red
+    scene.addObject(new Sphere(vec3(.5, -1, 9.5), 1, rgbToVec(200, 200, 200))); //white
+    scene.addObject(new Sphere(vec3(-.5, -1,10.5), 1, rgbToVec(46, 204, 113))); //green
+
+
     scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200))); //top wall;
     scene.addObject(new Sphere(vec3(0, -wall_r - 4, 0), wall_r, rgbToVec(200, 200, 200))); //bottom
     scene.addObject(new Sphere(vec3(wall_r + 4, 0, 0), wall_r, rgbToVec(52, 152, 219))); //right Wall
@@ -42,23 +44,30 @@ int main(){
             vec3 color(0,0,0);
             for (int i = 0; i < samples; i++){
 
+                //compute location on projection plane
                 double u = v_width * (double(x) + rand_real())/double(canvas.width) - (v_width/2);
                 double v = v_height * (double(y) + rand_real())/double(canvas.height) - (v_height/2);
 
+                //camera raay
                 Ray r(vec3(0,0,-10), vec3(u, -v,v_depth));
 
                 color += trace(r, scene);
             }
 
-            int r = int (sqrt(clamp(color.x/samples, 0, 1)) * 255);
-            int g = int (sqrt(clamp(color.y/samples, 0, 1)) * 255);
-            int b = int (sqrt(clamp(color.z/samples, 0, 1)) * 255);
+
+            color /= samples;
+
+            int r = int (sqrt(clamp(color.x, 0, 1)) * 255);
+            int g = int (sqrt(clamp(color.y, 0, 1)) * 255);
+            int b = int (sqrt(clamp(color.z, 0, 1)) * 255);
 
             canvas.setPixel(x,y,r,g, b);
         }
     }
 
 
+    
+    std::cout << "Saving image..." << std::endl;
     canvas.savePPM("render/test-scene.ppm");
    
     return 0;
@@ -99,7 +108,6 @@ vec3 trace(Ray r, Scene &scene){
 
         Ray shadow_ray(hit, light_dir);
 
-       
         for (int j = 0; j < scene.objects.size(); j++){
             t =  scene.objects[j]->intersect(shadow_ray);
             if (t > -.001 && t < light_dist){
@@ -107,9 +115,7 @@ vec3 trace(Ray r, Scene &scene){
             }
         }
 
-        
-
-     
+    
         color = closest->color * (light_color * light_intensity * dot(normal, light_dir)/light_dist + ambient_light);
         //sum +=  vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
         return  color;
