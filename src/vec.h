@@ -11,6 +11,7 @@ class vec3 {
         vec3(double _x, double _y, double _z){x = _x; y = _y; z = _z;}
 
         inline vec3& operator+=(const vec3 &v);
+        inline vec3& operator+=(const double s);
         inline vec3& operator/=(const double s);
 
         inline double length(){
@@ -26,6 +27,8 @@ class vec3 {
  inline vec3 operator+(const vec3 a, const vec3 b){
      return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
  }
+
+
 
 inline vec3 operator-(const vec3 a, const vec3 b){
      return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
@@ -61,6 +64,13 @@ inline vec3 operator-(const vec3 a, const vec3 b){
      x += v.x;
      y += v.y;
      z += v.z;
+     return *this;
+ }
+
+  inline vec3& vec3::operator+=(const double s){
+     x += s;
+     y += s;
+     z += s;
      return *this;
  }
 

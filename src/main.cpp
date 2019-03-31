@@ -2,10 +2,13 @@
 #include <fstream>
 #include <cstdlib>
 #include <math.h>
+#include <chrono>
 #include "vec.h"
 #include "ray.h"
 #include "canvas.h"
 #include "scene.h"
+
+#define GAMMA 2.2
 
 
 vec3 trace(Ray r, Scene &scene);
@@ -16,6 +19,7 @@ vec3 rgbToVec(int r, int g, int b);
 
 int main(){
     Canvas canvas(512, 512);
+    int samples = 16;
 
     //projection plane
     double v_width = 2;
@@ -36,8 +40,11 @@ int main(){
     scene.addObject(new Sphere(vec3(-wall_r - 4, 0, 0), wall_r, rgbToVec(231, 76, 60))); //left wall
     scene.addObject(new Sphere(vec3(0, 0, wall_r + 20), wall_r, rgbToVec(200, 200, 200))); //far wall
 
-    int samples = 16;
 
+    //array of vectors to hold raw colors
+    vec3* pixels = new vec3[canvas.width * canvas.height];
+
+    auto start = std::chrono::high_resolution_clock::now();
 
     for (int y = 0; y < canvas.height; y++){
         for (int x = 0; x < canvas.width; x++){
@@ -54,18 +61,30 @@ int main(){
                 color += trace(r, scene);
             }
 
+            int index = y * canvas.width + x;
+            pixels[index] = color/samples;
+        }
+    }
 
-            color /= samples;
+    
+    for (int y = 0; y < canvas.height; y++){
+        for (int x = 0; x < canvas.width; x++){
 
-            int r = int (sqrt(clamp(color.x, 0, 1)) * 255);
-            int g = int (sqrt(clamp(color.y, 0, 1)) * 255);
-            int b = int (sqrt(clamp(color.z, 0, 1)) * 255);
+            int index = y * canvas.width + x;
+            vec3 color = pixels[index];
+
+            int r = int (pow(clamp(color.x, 0, 1), 1/GAMMA) * 255);
+            int g = int (pow(clamp(color.y, 0, 1), 1/GAMMA) * 255);
+            int b = int (pow(clamp(color.z, 0, 1), 1/GAMMA) * 255);
 
             canvas.setPixel(x,y,r,g, b);
         }
     }
 
+    auto finish = std::chrono::high_resolution_clock::now();
+    auto elapsed =  std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
 
+    std::cout << "Render Time: " << double(elapsed.count()) / 1000 << " seconds" << std::endl;
     
     std::cout << "Saving image..." << std::endl;
     canvas.savePPM("render/test-scene.ppm");
@@ -83,9 +102,9 @@ vec3 trace(Ray r, Scene &scene){
     double t;
     double closest_dist = 100000;
     bool ray_hit = 0;
-    Sphere *closest;
+    Sphere *closest = nullptr;
 
-    for (int j = 0; j < scene.objects.size(); j++){
+    for (int j = 0; j < int(scene.objects.size()); j++){
         t =  scene.objects[j]->intersect(r);
         if (t > 0 && closest_dist > t){
             closest_dist = t;
@@ -106,19 +125,21 @@ vec3 trace(Ray r, Scene &scene){
         vec3 light_dir = unit(L);
         double light_dist = L.length();
 
+        //compute shadow
         Ray shadow_ray(hit, light_dir);
 
-        for (int j = 0; j < scene.objects.size(); j++){
+        for (int j = 0; j < int(scene.objects.size()); j++){
             t =  scene.objects[j]->intersect(shadow_ray);
             if (t > -.001 && t < light_dist){
                return closest->color * ambient_light;
             }
         }
 
-    
+        //diffuse lighting
         color = closest->color * (light_color * light_intensity * dot(normal, light_dir)/light_dist + ambient_light);
+
         //sum +=  vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
-        return  color;
+        return color;
     } else {
         return vec3(.9,.9,.9);
     }
