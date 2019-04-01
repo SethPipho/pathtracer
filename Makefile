@@ -1,4 +1,4 @@
-main: src/main.cpp src/canvas.h src/ray.h src/vec.h
-	g++ -o main src/main.cpp
+main: src/main.cpp
+	g++ -std=c++11 -Wall -O3 -fopenmp -o main src/main.cpp
 clean:
 	rm -f ./main
