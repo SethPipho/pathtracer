@@ -12,7 +12,7 @@
 #define GAMMA 2.2
 
 
-vec3 trace(Ray r, Scene &scene);
+vec3 trace(Ray &r, Scene &scene);
 double rand_real(unsigned int *seed);
 double map(double val, double from_min, double from_max, double to_min, double to_max );
 double clamp(double val, double min, double max);
@@ -48,11 +48,13 @@ int main(){
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     #pragma omp parallel for num_threads(num_threads) 
     for (int y = 0; y < canvas.height; y++){
-        //each thread needs seed for call to rand_r() because rand() is locking
-        unsigned int seed = (unsigned int)omp_get_thread_num();
+        //each thread needs seed for call to rand_r() because rand() is not thread safe
+        unsigned int seed = (unsigned int) omp_get_thread_num();
         for (int x = 0; x < canvas.width; x++){
             vec3 color(0,0,0);
         
@@ -70,6 +72,9 @@ int main(){
             pixels[index] = color/samples;
         }
     }
+
+
+     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
 
     //Tonemapping and vec to color conversion
@@ -87,6 +92,9 @@ int main(){
         }
     }
 
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     auto finish = std::chrono::high_resolution_clock::now();
     auto elapsed =  std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
 
@@ -98,54 +106,68 @@ int main(){
     return 0;
 }
 
-vec3 trace(Ray r, Scene &scene){
+
+bool nearestIntersection(Scene &scene, Ray &r, Intersectable **nearest, double *toi){
+    double t;
+    double nearest_toi = 100000;
+    bool ray_hit = 0;
+    Intersectable *current_nearest;
+
+    for (int j = 0; j < int(scene.objects.size()); j++){
+        t = scene.objects[j]->intersect(r);
+        if (t > 0 && nearest_toi > t){
+            nearest_toi = t;
+            current_nearest = scene.objects[j];
+            ray_hit = 1;
+        }
+    }
+
+    if (ray_hit){
+        *toi = nearest_toi;
+        *nearest = current_nearest;
+        return 1;
+    }
+    return 0;
+}
+
+vec3 trace(Ray &r, Scene &scene){
 
     vec3 light(2,2, 5);
     vec3 light_color(1,1,1);
     double light_intensity = 4;
     vec3 ambient_light(.2,.2,.2);
 
-    double t;
-    double closest_dist = 100000;
-    bool ray_hit = 0;
-    Sphere *closest = nullptr;
 
-    for (int j = 0; j < int(scene.objects.size()); j++){
-        t =  scene.objects[j]->intersect(r);
-        if (t > 0 && closest_dist > t){
-            closest_dist = t;
-            closest = (Sphere*) scene.objects[j];
-            ray_hit = 1;
-        }
-    }
-
-    vec3 hit;
-    vec3 normal;
-    vec3 color;
-
+    Intersectable *nearest = nullptr;
+    double toi = 0; //time of impact
+    bool ray_hit = nearestIntersection(scene, r, &nearest, &toi);
+    
+   
     if (ray_hit) {
-         
-        closest->computeHit(r, closest_dist, &hit, &normal);
 
-        vec3 L = light - hit;
-        vec3 light_dir = unit(L);
-        double light_dist = L.length();
+        vec3 hit;
+        vec3 normal;
+   
+        nearest->computeHit(r, toi, &hit, &normal);
+
+        vec3 to_light = light - hit;
+        vec3 light_dir = unit(to_light);
+        double light_dist = to_light.length();
 
         //compute shadow
         Ray shadow_ray(hit, light_dir);
-
         for (int j = 0; j < int(scene.objects.size()); j++){
-            t =  scene.objects[j]->intersect(shadow_ray);
-            if (t > -.001 && t < light_dist){
-               return closest->color * ambient_light;
+            toi =  scene.objects[j]->intersect(shadow_ray);
+            if (toi > -.001 && toi < light_dist){
+               return nearest->color * ambient_light;
             }
         }
 
         //diffuse lighting
-        color = closest->color * (light_color * light_intensity * dot(normal, light_dir)/light_dist + ambient_light);
+        vec3 diffuse = (light_color * light_intensity * dot(normal, light_dir)/light_dist);
 
-        //sum +=  vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
-        return color;
+        //return vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
+        return nearest->color * (diffuse + ambient_light);
     } else {
         return vec3(.9,.9,.9);
     }
