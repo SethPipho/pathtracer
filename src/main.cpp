@@ -12,7 +12,7 @@
 #define GAMMA 2.2
 
 
-vec3 trace(Ray &r, Scene &scene);
+vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed);
 double rand_real(unsigned int *seed);
 double map(double val, double from_min, double from_max, double to_min, double to_max );
 double clamp(double val, double min, double max);
@@ -20,8 +20,8 @@ vec3 rgbToVec(int r, int g, int b);
 
 int main(){
     Canvas canvas(512, 512);
-    int samples = 16;
-    int num_threads = 4;
+    int samples = 100;
+    int num_threads = 8;
 
     //projection plane
     double v_width = 2;
@@ -29,18 +29,24 @@ int main(){
     double v_depth = 4;
 
     double wall_r = 100000; //radius for wall spheres
+
    
     Scene scene;
-    scene.addObject(new Sphere(vec3(-.5, -2,10), 1, rgbToVec(231, 76, 60))); //red
-    scene.addObject(new Sphere(vec3(.5, -1, 9.5), 1, rgbToVec(200, 200, 200))); //white
-    scene.addObject(new Sphere(vec3(-.5, -1,10.5), 1, rgbToVec(46, 204, 113))); //green
+    scene.addObject(new Sphere(vec3(1.5, -3,10), 1, rgbToVec(230, 126, 34), DIFFUSE)); //orange
+    scene.addObject(new Sphere(vec3(-1, -2.5, 11), 1.5, rgbToVec(200, 200, 200), DIFFUSE)); //white
+    //scene.addObject(new Sphere(vec3(-.5, -1, 11), 1, rgbToVec(46, 204, 113), DIFFUSE)); //green
 
+    //scene.addObject(new Sphere(vec3(0, 4, 10), 2, rgbToVec(255, 255, 255), EMISSION)); //light
+   // scene.objects[3]->emmission = vec3(3,3,3);
 
-    scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200))); //top wall;
-    scene.addObject(new Sphere(vec3(0, -wall_r - 4, 0), wall_r, rgbToVec(200, 200, 200))); //bottom
-    scene.addObject(new Sphere(vec3(wall_r + 4, 0, 0), wall_r, rgbToVec(52, 152, 219))); //right Wall
-    scene.addObject(new Sphere(vec3(-wall_r - 4, 0, 0), wall_r, rgbToVec(231, 76, 60))); //left wall
-    scene.addObject(new Sphere(vec3(0, 0, wall_r + 20), wall_r, rgbToVec(200, 200, 200))); //far wall
+    scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //top wall/light;
+    
+   
+    scene.addObject(new Sphere(vec3(0, -wall_r - 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //bottom
+    scene.addObject(new Sphere(vec3(wall_r + 4, 0, 0), wall_r, rgbToVec(52, 152, 219), DIFFUSE)); //right Wall
+    scene.addObject(new Sphere(vec3(-wall_r - 4, 0, 0), wall_r, rgbToVec(231, 76, 60), DIFFUSE)); //left wall
+    scene.addObject(new Sphere(vec3(0, 0, wall_r + 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //far wall
+    scene.addObject(new Sphere(vec3(0, 0, -wall_r - 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //back wall
 
 
     //array of vectors to hold raw colors
@@ -50,14 +56,17 @@ int main(){
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  
 
     #pragma omp parallel for num_threads(num_threads) 
     for (int y = 0; y < canvas.height; y++){
-        //each thread needs seed for call to rand_r() because rand() is not thread safe
-        unsigned int seed = (unsigned int) omp_get_thread_num();
-        for (int x = 0; x < canvas.width; x++){
-            vec3 color(0,0,0);
+
+        unsigned int seed = y;
         
+        int rank = omp_get_thread_num();
+        for (int x = 0; x < canvas.width; x++){
+            
+            vec3 color(0,0,0);
             for (int i = 0; i < samples; i++){
 
                 //compute location on projection plane
@@ -66,7 +75,7 @@ int main(){
 
                 //camera raay
                 Ray r(vec3(0,0,-10), vec3(u, -v,v_depth));
-                color += trace(r, scene);
+                color += trace(r, scene, 0, 5, &seed);
             }
             int index = y * canvas.width + x;
             pixels[index] = color/samples;
@@ -130,47 +139,111 @@ bool nearestIntersection(Scene &scene, Ray &r, Intersectable **nearest, double *
     return 0;
 }
 
-vec3 trace(Ray &r, Scene &scene){
+vec3 uniformRandomSampleUnitSphere(unsigned int *seed){
+   
+    
+    double x,y,z;
+    do {
+        x = rand_real(seed) * 2 - 1;
+        y = rand_real(seed) * 2 - 1;
+        z = rand_real(seed) * 2 - 1;
 
-    vec3 light(2,2, 5);
+    } while(x * x + y * y + z * z >= 1.0);
+
+
+
+    return vec3(x,y,z);
+}
+
+vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
+
+
+    if (depth == max_depth){
+        return vec3(0,0,0);
+    }
+
+    //random jitter light to get soft shadows
+    //light radius
+    double light_radius = 1;
+    vec3 light = vec3(0,2, 10) + uniformRandomSampleUnitSphere(seed) * light_radius;
     vec3 light_color(1,1,1);
-    double light_intensity = 4;
+    double light_intensity = 3;
     vec3 ambient_light(.2,.2,.2);
+    vec3 world_color(.8,.8,.8);
 
 
     Intersectable *nearest = nullptr;
     double toi = 0; //time of impact
     bool ray_hit = nearestIntersection(scene, r, &nearest, &toi);
     
-   
-    if (ray_hit) {
-
-        vec3 hit;
-        vec3 normal;
-   
-        nearest->computeHit(r, toi, &hit, &normal);
-
-        vec3 to_light = light - hit;
-        vec3 light_dir = unit(to_light);
-        double light_dist = to_light.length();
-
-        //compute shadow
-        Ray shadow_ray(hit, light_dir);
-        for (int j = 0; j < int(scene.objects.size()); j++){
-            toi =  scene.objects[j]->intersect(shadow_ray);
-            if (toi > -.001 && toi < light_dist){
-               return nearest->color * ambient_light;
-            }
-        }
-
-        //diffuse lighting
-        vec3 diffuse = (light_color * light_intensity * dot(normal, light_dir)/light_dist);
-
-        //return vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
-        return nearest->color * (diffuse + ambient_light);
-    } else {
-        return vec3(.9,.9,.9);
+    if (!ray_hit){
+        return world_color;
     }
+
+    if (nearest->material == EMISSION){
+        return nearest->emmission;
+    }
+    
+    vec3 hit;
+    vec3 normal;
+    nearest->computeHit(r, toi, &hit, &normal);
+
+    vec3 to_camera = unit(r.direction * -1);
+
+    vec3 sample = uniformRandomSampleUnitSphere(seed); 
+    vec3 target = hit + normal + sample;
+    Ray indirect_ray(hit, target - hit);
+
+    vec3 indirect = trace(indirect_ray, scene, depth + 1, max_depth, seed);
+
+    //explicit light sampling
+
+    vec3 to_light = light - hit;
+    vec3 light_dir = unit(to_light);
+    double light_dist = to_light.length();
+    bool is_shadow = 0;
+
+    //compute shadow
+    Ray shadow_ray(hit, light_dir);
+    for (int j = 0; j < int(scene.objects.size()); j++){
+        toi = scene.objects[j]->intersect(shadow_ray);
+        if (toi > -.001 && toi < light_dist){
+            is_shadow = 1;
+            break;
+        }
+    }
+
+    vec3 direct; //direct lighting 
+    if (is_shadow){
+        direct = vec3(0,0,0);
+    } else {
+        direct = (light_color * light_intensity * dot(normal, light_dir)/light_dist);
+    }
+    
+     return nearest->color * (indirect + direct);
+
+    
+
+    /*
+    //reflection ray
+    //vec3 to_camera = unit(r.direction) * -1;
+   // vec3 reflection =  normal * (2 * dot(normal, to_camera)) - to_camera; 
+    //Ray reflection_ray(hit, reflection);
+
+    //diffuse lighting
+    //
+
+    // return vec3(reflection.x + 1,reflection.y + 1, reflection.z + 1) * .5;
+    //return vec3(normal.x + 1,normal.y + 1,normal.z + 1) * .5;
+
+    if (depth == max_depth || nearest->material == DIFFUSE){
+            return nearest->color * (diffuse + ambient_light) + nearest->emmission;
+    }
+    return nearest->color * trace(reflection_ray, scene, depth + 1, max_depth);
+
+    */
+       
+    
 }
 
 //Return double between 0..1

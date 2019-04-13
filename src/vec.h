@@ -42,6 +42,10 @@ inline vec3 operator-(const vec3 a, const vec3 b){
      return vec3(v.x * c, v.y * c, v.z * c);
  }
 
+  inline vec3 operator*(const double c, const vec3 v){
+     return vec3(v.x * c, v.y * c, v.z * c);
+ }
+
  inline vec3 operator/(const vec3 v, const double c){
      return vec3(v.x / c, v.y / c, v.z / c);
  }

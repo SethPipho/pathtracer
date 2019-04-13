@@ -5,9 +5,13 @@
 #include "vec.h"
 #include "ray.h"
 
+enum Material {DIFFUSE, MIRROR, EMISSION};
+
 class Intersectable {
     public:
         vec3 color;
+        vec3 emmission;
+        Material material;
         virtual double intersect(Ray r) = 0;
         virtual void computeHit(Ray r, double t, vec3* hit, vec3* normal) = 0;
 };
@@ -19,7 +23,7 @@ class Sphere: public Intersectable {
         double radius;
       
         Sphere();
-        Sphere(vec3 c, double r, vec3 col){center = c; radius = r; color = col;}
+        Sphere(vec3 c, double r, vec3 col, Material m){center = c; radius = r; color = col; material = m;}
 
         double intersect(Ray r);
         void computeHit(Ray r, double t, vec3* hit, vec3* normal);
