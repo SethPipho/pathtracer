@@ -17,17 +17,23 @@ class vec3 {
         inline double length(){
             return sqrt(x * x + y * y + z * z);
         }
-
-
-       
-
 };
+ 
+
+ inline vec3 cross(const vec3 a, const vec3 b){
+     return vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+ }
+
+
+
+ inline double dot(const vec3 a, const vec3 b){
+     return a.x * b.x + a.y * b.y + a.z * b.z; 
+ }
 
 
  inline vec3 operator+(const vec3 a, const vec3 b){
      return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
  }
-
 
 
 inline vec3 operator-(const vec3 a, const vec3 b){
@@ -50,14 +56,10 @@ inline vec3 operator-(const vec3 a, const vec3 b){
      return vec3(v.x / c, v.y / c, v.z / c);
  }
 
- inline vec3 unit(vec3 v){
+  inline vec3 unit(vec3 v){
     return v / v.length();
 }
 
-
- inline double dot(const vec3 a, const vec3 b){
-     return a.x * b.x + a.y * b.y + a.z * b.z; 
- }
 
  inline std::ostream& operator<<(std::ostream &os, const vec3 &t){
      os <<" ("<< t.x << " " << t.y << " " << t.z << ") ";

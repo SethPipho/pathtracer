@@ -21,7 +21,7 @@ vec3 rgbToVec(int r, int g, int b);
 int main(){
     Canvas canvas(512, 512);
     int samples = 100;
-    int num_threads = 8;
+    int num_threads = 4;
 
     //projection plane
     double v_width = 2;
@@ -30,13 +30,11 @@ int main(){
 
     double wall_r = 100000; //radius for wall spheres
 
-   
-    Scene scene;
-    scene.addObject(new Sphere(vec3(1.5, -3,10), 1, rgbToVec(230, 126, 34), DIFFUSE)); //orange
-    scene.addObject(new Sphere(vec3(-1, -2.5, 11), 1.5, rgbToVec(200, 200, 200), DIFFUSE)); //white
-    //scene.addObject(new Sphere(vec3(-.5, -1, 11), 1, rgbToVec(46, 204, 113), DIFFUSE)); //green
 
-    //scene.addObject(new Sphere(vec3(0, 4, 10), 2, rgbToVec(255, 255, 255), EMISSION)); //light
+    Scene scene;
+    scene.addObject(new Sphere(vec3(1.5, -3, 10), 1, rgbToVec(230, 126, 34), DIFFUSE)); //orange
+    scene.addObject(new Sphere(vec3(-1, -2.5, 11), 1.5, rgbToVec(200, 200, 200), DIFFUSE)); //white
+    //scene.addObject(new Sphere(vec3(-1, -1, 11), 1, rgbToVec(52, 152, 219), DIFFUSE)); //light
    // scene.objects[3]->emmission = vec3(3,3,3);
 
     scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //top wall/light;
@@ -48,7 +46,10 @@ int main(){
     scene.addObject(new Sphere(vec3(0, 0, wall_r + 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //far wall
     scene.addObject(new Sphere(vec3(0, 0, -wall_r - 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //back wall
 
-
+    scene.addObject(new Triangle(vec3(-3,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10), rgbToVec(106, 176, 76)));
+    scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10), rgbToVec(106, 176, 76)));
+     scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10),rgbToVec(106, 176, 76)));
+   
     //array of vectors to hold raw colors
     vec3* pixels = new vec3[canvas.width * canvas.height];
 
@@ -63,7 +64,6 @@ int main(){
 
         unsigned int seed = y;
         
-        int rank = omp_get_thread_num();
         for (int x = 0; x < canvas.width; x++){
             
             vec3 color(0,0,0);
@@ -72,10 +72,11 @@ int main(){
                 //compute location on projection plane
                 double u = v_width * (double(x) + rand_real(&seed))/double(canvas.width) - (v_width/2);
                 double v = v_height * (double(y) + rand_real(&seed))/double(canvas.height) - (v_height/2);
+                
 
                 //camera raay
                 Ray r(vec3(0,0,-10), vec3(u, -v,v_depth));
-                color += trace(r, scene, 0, 5, &seed);
+                color += trace(r, scene, 0, 4, &seed);
             }
             int index = y * canvas.width + x;
             pixels[index] = color/samples;
@@ -93,6 +94,7 @@ int main(){
             int index = y * canvas.width + x;
             vec3 color = pixels[index];
 
+
             int r = int (pow(clamp(color.x, 0, 1), 1/GAMMA) * 255);
             int g = int (pow(clamp(color.y, 0, 1), 1/GAMMA) * 255);
             int b = int (pow(clamp(color.z, 0, 1), 1/GAMMA) * 255);
@@ -107,6 +109,7 @@ int main(){
     auto finish = std::chrono::high_resolution_clock::now();
     auto elapsed =  std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
 
+    std::cout << "Threads: " << num_threads << std::endl;
     std::cout << "Render Time: " << double(elapsed.count()) / 1000 << " seconds" << std::endl;
     
     std::cout << "Saving image..." << std::endl;
@@ -165,7 +168,7 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     //random jitter light to get soft shadows
     //light radius
     double light_radius = 1;
-    vec3 light = vec3(0,2, 10) + uniformRandomSampleUnitSphere(seed) * light_radius;
+    vec3 light = vec3(0,2, 9) + uniformRandomSampleUnitSphere(seed) * light_radius;
     vec3 light_color(1,1,1);
     double light_intensity = 3;
     vec3 ambient_light(.2,.2,.2);
@@ -197,13 +200,11 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     vec3 indirect = trace(indirect_ray, scene, depth + 1, max_depth, seed);
 
     //explicit light sampling
-
     vec3 to_light = light - hit;
     vec3 light_dir = unit(to_light);
     double light_dist = to_light.length();
     bool is_shadow = 0;
 
-    //compute shadow
     Ray shadow_ray(hit, light_dir);
     for (int j = 0; j < int(scene.objects.size()); j++){
         toi = scene.objects[j]->intersect(shadow_ray);
