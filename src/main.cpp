@@ -2,12 +2,16 @@
 #include <fstream>
 #include <cstdlib>
 #include <omp.h>
+#include <mpi.h>
 #include <math.h>
 #include <chrono>
 #include "vec.h"
 #include "ray.h"
 #include "canvas.h"
 #include "scene.h"
+
+//module load intel
+//module load mpich
 
 #define GAMMA 2.2
 
@@ -29,8 +33,8 @@ int main(){
     MPI_Comm_rank(comm, &my_rank);
 
     Canvas canvas(512, 512);
-    int samples = 16;
-    int num_threads = 4;
+    int samples = 100;
+    int num_threads = 1;
 
     //projection plane
     double v_width = 2;
@@ -41,7 +45,7 @@ int main(){
     Scene scene;
     scene.addObject(new Sphere(vec3(-.5, -2,10), 1, rgbToVec(231, 76, 60))); //red
     scene.addObject(new Sphere(vec3(.5, -1, 9.5), 1, rgbToVec(200, 200, 200))); //white
-    scene.addObject(new Sphere(vec3(-.5, -1,10.5), 1, rgbToVec(46, 204, 113))); //green
+    scene.addObject(new Sphere(vec3(-.5, -1,10.5), 1, rgbToVec(46, 204, 0))); //green
 
 
     scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200))); //top wall;
@@ -54,7 +58,7 @@ int main(){
 
     if(my_rank == 0){
 
-      double* pixel_row = (double *) malloc(3 * sizeof(double) * canvas.width);
+      double pixel_row[3 * canvas.width];
       int row_start; 
       MPI_Status status; 
       //array of vectors to hold raw colors
@@ -68,9 +72,10 @@ int main(){
 	
         MPI_Recv(pixel_row, 3 * canvas.width, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
 	row_start = status.MPI_TAG;
-        for(int l = row_start * canvas.width; l < canvas.width; l++){
-          pixels[l] = new vec3(*pixel_row(l * 3), *pixel_row(l * 3 + 1), *pixel_row(l * 3 + 2));
-	}
+        std::cout << "received " << row_start << " from " << status.MPI_SOURCE << std::endl;
+        for(int i = 0; i <  canvas.width; i++){
+          pixels[row_start * canvas.width + i] = vec3( pixel_row[i * 3], pixel_row[i * 3 + 1], pixel_row[i * 3 + 2]);
+	    }
       }
 
       #pragma omp parallel for num_threads(num_threads)
@@ -94,13 +99,13 @@ int main(){
       std::cout << "Render Time: " << double(elapsed.count()) / 1000 << " seconds" << std::endl;
 
       std::cout << "Saving image..." << std::endl;
-      canvas.savePPM("render/test-scene.ppm");
+      canvas.savePPM("render/mpi-test.ppm");
     }
  
     else{   
       for (int y = my_rank - 1; y < canvas.height; y = y + comm_sz - 1){
           //each thread needs seed for call to rand_r() because rand() is locking
-	  double color_array[canvas.width * 3];
+	      double color_array[canvas.width * 3];
           unsigned int seed = y;
           #pragma omp parallel for num_threads(num_threads)
           for (int x = 0; x < canvas.width; x++){
