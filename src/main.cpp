@@ -18,8 +18,25 @@ double map(double val, double from_min, double from_max, double to_min, double t
 double clamp(double val, double min, double max);
 vec3 rgbToVec(int r, int g, int b);
 
+
+void displayProgressBar(double progress){
+    double width = 20;
+    int num_chars = int(width * progress);
+    
+    std::cout << "  " << int(progress * 100) << "% [";
+
+    for (int i = 0; i < num_chars; i++){
+        std::cout << "/";
+    }
+    for (int i = num_chars; i < width; i++){
+        std::cout << "-";
+    }
+    std::cout << "]\r" ;
+    std::cout.flush();
+}
+
 int main(){
-    Canvas canvas(512, 512);
+    Canvas canvas(1024, 1024);
     int samples = 100;
     int num_threads = 4;
 
@@ -47,23 +64,24 @@ int main(){
     scene.addObject(new Sphere(vec3(0, 0, -wall_r - 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //back wall
 
     scene.addObject(new Triangle(vec3(-3,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10), rgbToVec(106, 176, 76)));
-    scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10), rgbToVec(106, 176, 76)));
-     scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10),rgbToVec(106, 176, 76)));
+    scene.addObject(new Triangle(vec3(-1,-1.5, 9), vec3(1,-1.5, 11),  vec3(-1,.5,10), rgbToVec(106, 176, 76)));
+    scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10),rgbToVec(106, 176, 76)));
    
     //array of vectors to hold raw colors
     vec3* pixels = new vec3[canvas.width * canvas.height];
 
     auto start = std::chrono::high_resolution_clock::now();
 
+   
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   
 
-    #pragma omp parallel for num_threads(num_threads) 
+    #pragma omp parallel for schedule(static,1) num_threads(num_threads) 
     for (int y = 0; y < canvas.height; y++){
 
         unsigned int seed = y;
-        
+
         for (int x = 0; x < canvas.width; x++){
             
             vec3 color(0,0,0);
@@ -80,8 +98,18 @@ int main(){
             }
             int index = y * canvas.width + x;
             pixels[index] = color/samples;
+
+         
+            if (y % 25 == 0){
+                displayProgressBar(double(y)/double(canvas.width));
+            }
+            
         }
     }
+    displayProgressBar(1.0);
+    std::cout << std::endl;
+    auto finish = std::chrono::high_resolution_clock::now();
+    auto elapsed =  std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
 
 
      ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,14 +134,15 @@ int main(){
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto finish = std::chrono::high_resolution_clock::now();
-    auto elapsed =  std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
+  
 
     std::cout << "Threads: " << num_threads << std::endl;
     std::cout << "Render Time: " << double(elapsed.count()) / 1000 << " seconds" << std::endl;
     
     std::cout << "Saving image..." << std::endl;
     canvas.savePPM("render/test-scene.ppm");
+
+    
    
     return 0;
 }
@@ -175,6 +204,8 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     vec3 world_color(.8,.8,.8);
 
 
+
+
     Intersectable *nearest = nullptr;
     double toi = 0; //time of impact
     bool ray_hit = nearestIntersection(scene, r, &nearest, &toi);
@@ -188,10 +219,10 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     }
     
     vec3 hit;
-    vec3 normal;
-    nearest->computeHit(r, toi, &hit, &normal);
+    hit = r.origin + (r.direction * toi);
 
-    vec3 to_camera = unit(r.direction * -1);
+    vec3 normal;
+    normal = nearest->computeHit(hit);
 
     vec3 sample = uniformRandomSampleUnitSphere(seed); 
     vec3 target = hit + normal + sample;

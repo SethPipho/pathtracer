@@ -13,7 +13,7 @@ class Intersectable {
         vec3 emmission;
         Material material;
         virtual double intersect(Ray r) = 0;
-        virtual void computeHit(Ray r, double t, vec3* hit, vec3* normal) = 0;
+        virtual vec3 computeHit(vec3 &hit) = 0;
 };
 
 
@@ -26,7 +26,7 @@ class Sphere: public Intersectable {
         Sphere(vec3 c, double r, vec3 col, Material m){center = c; radius = r; color = col; material = m;}
 
         double intersect(Ray r);
-        void computeHit(Ray r, double t, vec3* hit, vec3* normal);
+        vec3 computeHit(vec3 &hit);
         
 };
 
@@ -43,9 +43,9 @@ double Sphere::intersect(Ray r){
     return (-b - sqrt(discriminant)) / (2.0 * a);
 }
 
-void Sphere::computeHit(Ray r, double t, vec3* hit, vec3* normal){
-    *hit =  r.origin + (r.direction * t);
-    *normal = unit(*hit - center);
+vec3 Sphere::computeHit(vec3 &hit){
+   return unit(hit - center);
+   //return vec3(0,0,0);
 }
 
 
@@ -61,7 +61,7 @@ class Triangle: public Intersectable {
         Triangle(vec3 _v0, vec3 _v1, vec3 _v2, vec3 _color){v0 = _v0; v1 = _v1; v2 = _v2; color = _color; normal = -1 * unit(cross(v1 - v0, v2 - v0));} 
 
         double intersect(Ray r);
-        void computeHit(Ray r, double t, vec3* hit, vec3* normal);
+        vec3 computeHit(vec3 &hit);
 };
 
 //Möller–Trumbore intersection algorithm
@@ -98,15 +98,8 @@ double Triangle::intersect(Ray r){
         return -1;
 }
 
-void Triangle::computeHit(Ray r, double t, vec3* hit, vec3* _normal){
-    *hit =  r.origin + (r.direction * t);
-    if (dot(r.direction, normal) < 0){
-        *_normal = normal;
-    } else {
-        *_normal = -1 * normal;
-    }
-    
-  
+vec3 Triangle::computeHit(vec3& hit){
+   return normal;
 }
 
 
