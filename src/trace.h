@@ -32,8 +32,6 @@ bool nearestIntersection(Scene &scene, Ray &r, Intersectable **nearest, double *
 }
 
 vec3 uniformRandomSampleUnitSphere(unsigned int *seed){
-   
-    
     double x,y,z;
     do {
         x = rand_real(seed) * 2 - 1;
@@ -41,9 +39,7 @@ vec3 uniformRandomSampleUnitSphere(unsigned int *seed){
         z = rand_real(seed) * 2 - 1;
 
     } while(x * x + y * y + z * z >= 1.0);
-
-
-
+    
     return vec3(x,y,z);
 }
 

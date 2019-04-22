@@ -12,4 +12,6 @@ A basic pathtracer rendering engine in C++
 
 - [Physically Based Rendering: From Theory To Implementation](http://www.pbr-book.org/)
 
+### External Libaries Used
 
+ - Command Line Parsing: [CLI11](https://github.com/CLIUtils/CLI11)

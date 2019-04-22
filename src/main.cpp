@@ -10,16 +10,31 @@
 #include "scene.h"
 #include "util.h"
 #include "trace.h"
+#include "CLI11.hpp"
 
 #define GAMMA 2.2
 
-
-
-int main(){
-    Canvas canvas(512, 512);
+int main(int argc, char** argv){
+    std::string filename = "render.ppm";
     int samples = 100;
+    int img_width = 512;
     int num_threads = 4;
+    
+    CLI::App app{"App description"};
+    app.add_option("-o,--output", filename, "Path of output file (ppm image)");
+    app.add_option("-s,--samples", samples, "Number of samples per pixel");
+    app.add_option("-w,--width", img_width, "Width of image in pixels");
+    app.add_option("-t,--threads", num_threads, "Number of threads");
+    CLI11_PARSE(app, argc, argv);
 
+    std::cout << "Rendering to: '" << filename << "'" << std::endl;
+    std::cout << img_width << " x " << img_width << std::endl;
+    std::cout << "Samples: " << samples << std::endl;
+    std::cout << "Threads: " << num_threads << std::endl;
+
+
+    Canvas canvas(img_width, img_width);
+    
     double wall_r = 100000; //radius for wall spheres
 
     Scene scene;
@@ -90,12 +105,9 @@ int main(){
         }
     }
 
-
-    std::cout << "Threads: " << num_threads << std::endl;
     std::cout << "Render Time: " << double(elapsed.count()) / 1000 << " seconds" << std::endl;
-    
     std::cout << "Saving image..." << std::endl;
-    canvas.savePPM("render/test-scene.ppm");
+    canvas.savePPM(filename.c_str());
 
     return 0;
 }
