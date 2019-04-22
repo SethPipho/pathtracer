@@ -67,7 +67,7 @@ class Triangle: public Intersectable {
 //Möller–Trumbore intersection algorithm
 double Triangle::intersect(Ray r){
     
-    const float EPSILON = -0.0000001;
+    const double EPSILON = -0.0000001;
 
     vec3 edge1, edge2, h, s, q;
     double a,f,u,v;
@@ -88,7 +88,7 @@ double Triangle::intersect(Ray r){
     if (v < 0.0 || u + v > 1.0)
         return -1;
     // At this stage we can compute t to find out where the intersection point is on the line.
-    float t = f * dot(edge2, q);  
+    double t = f * dot(edge2, q);  
     if (t > EPSILON) // ray intersection
     {
         
