@@ -4,10 +4,6 @@
 #include <cstdlib>
 #include "vec.h"
 
-//Return double between 0..1
-double rand_real(unsigned int *seed){
-    return double(rand_r(seed)) / double(RAND_MAX);
-}
 
 vec3 rgbToVec(int r, int g, int b){
     return vec3(double(r)/255, double(g)/255, double(b)/255);
@@ -26,6 +22,13 @@ double clamp(double val, double min, double max){
 
 double map(double val, double from_min, double from_max, double to_min, double to_max ){
     return to_min + (to_max - to_min) * ((val - from_min) / (from_max - from_min));
+}
+
+
+
+//Return double between 0..1
+double rand_real(unsigned int *seed){
+    return double(rand_r(seed)) / double(RAND_MAX);
 }
 
 
