@@ -1,15 +1,15 @@
 import random
 
-path = "scenes/balls.scene"
-template = "sphere {} {} {} {} 200 200 200"
+path = "scenes/balls.4.scene"
+template = "sphere {} {} {} {} 230 126 34"
 
 f = open(path, "w")
 
-for i in range(20):
-  x = random.uniform(-2,2)
-  y = random.uniform(-4, 4)
+for i in range(400):
+  x = random.uniform(-3,3)
+  y = random.uniform(-3, 3)
   z = random.uniform(9,12)
-  radius = random.uniform(.5, 1.5)
+  radius = random.uniform(.1, .6)
   f.write(template.format(x,y,z,radius) + "\n")
 
 
@@ -29,4 +29,4 @@ sphere 0 0 100020 100000 200 200 200
 sphere 0 0 -100020 100000 200 200 200 
 '''
 
-f.write(box)
+#f.write(box)
