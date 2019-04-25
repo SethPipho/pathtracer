@@ -17,18 +17,16 @@
 
 int main(int argc, char** argv){
     MPI_Init(NULL, NULL);
-    int i;
-    double my_num;
     int my_rank, comm_sz;
     MPI_Comm comm;
     comm = MPI_COMM_WORLD;
     MPI_Comm_size(comm, &comm_sz);
     MPI_Comm_rank(comm, &my_rank);
 
-    std::string filename = "render.ppm";
+    std::string filename = "render/mpi-v2-test.ppm";
     int samples = 100;
     int img_width = 512;
-    int num_threads = 4;
+    int num_threads = 1;
 
     CLI::App app{"App description"};
     app.add_option("-o,--output", filename, "Path of output file (ppm image)");
@@ -37,6 +35,13 @@ int main(int argc, char** argv){
     app.add_option("-t,--threads", num_threads, "Number of threads");
     CLI11_PARSE(app, argc, argv);
 
+
+    if (my_rank == 0){
+        std::cout << "Rendering to: '" << filename << "'" << std::endl;
+        std::cout << img_width << " x " << img_width << std::endl;
+        std::cout << "Samples: " << samples << std::endl;
+        std::cout << "Threads: " << num_threads << std::endl;
+    }
 
     Canvas canvas(img_width, img_width);
     
@@ -57,65 +62,72 @@ int main(int argc, char** argv){
     scene.addObject(new Triangle(vec3(-1,-1.5, 9), vec3(1,-1.5, 11),  vec3(-1,.5,10), rgbToVec(150,150,150)));
     scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10),rgbToVec(150,150,150)));
    
-    if(my_rank != 0){
-        for (int y = my_rank - 1; y < canvas.height; y = y + comm_sz - 1){
-        //each thread needs seed for call to rand_r() because rand() is locking
-        double color_array[canvas.width * 3];
-        unsigned int seed = y;
-        #pragma omp parallel for schedule(static,1) num_threads(num_threads) 
-            for (int x = 0; x < canvas.width; x++){
-            vec3 color(0,0,0);
-            for (int i = 0; i < samples; i++){
-                //projection plane
-                double v_width = 2;
-                double v_height = 2;
-                double v_depth = 4;
+    vec3* pixels = new vec3[canvas.width * canvas.height];
 
-                //compute location on projection plane
-                double u = v_width * (double(x) + rand_real(&seed))/double(canvas.width) - (v_width/2);
-                double v = v_height * (double(y) + rand_real(&seed))/double(canvas.height) - (v_height/2);
-
-                //camera ray
-                Ray r(vec3(0,0,-10), vec3(u, -v,v_depth));
-                color += trace(r, scene, 0, 3, &seed);
-            }
-            //int index = y * canvas.width + x;
-            color = color/samples;
-            color_array[x * 3] = color.x;
-            color_array[x * 3 + 1] = color.y;
-            color_array[x * 3 + 2] = color.z;
-        }
-        MPI_Send(&color_array[0], canvas.width * 3, MPI_DOUBLE, 0, y, comm);
-        }
-    } else {   
-
+    auto start = std::chrono::high_resolution_clock::now();
     
+    for (int y = my_rank; y < canvas.height; y = y + comm_sz){
+        //each thread needs seed for call to rand_r() because rand() is locking
+        unsigned int seed = y;
+      //  #pragma omp parallel for schedule(static,1) 
+            for (int x = 0; x < canvas.width; x++){
+                vec3 color(0,0,0);
+                for (int i = 0; i < samples; i++){
+                    //projection plane
+                    double v_width = 2;
+                    double v_height = 2;
+                    double v_depth = 4;
 
-        std::cout << "Rendering to: '" << filename << "'" << std::endl;
-        std::cout << img_width << " x " << img_width << std::endl;
-        std::cout << "Samples: " << samples << std::endl;
-        std::cout << "Threads: " << num_threads << std::endl;
+                    //compute location on projection plane
+                    double u = v_width * (double(x) + rand_real(&seed))/double(canvas.width) - (v_width/2);
+                    double v = v_height * (double(y) + rand_real(&seed))/double(canvas.height) - (v_height/2);
 
-
-
-        double pixel_row[3 * canvas.width];
-        int row_start; 
-        MPI_Status status; 
-        //array of vectors to hold raw colors
-        vec3* pixels = new vec3[canvas.width * canvas.height];
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        
-        for(int k = 0; k < canvas.height; k++){
-            MPI_Recv(pixel_row, 3 * canvas.width, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
-            row_start = status.MPI_TAG;
-        // std::cout << "received " << row_start << " from " << status.MPI_SOURCE << std::endl;
-            displayProgressBar(double(k)/double(canvas.height));
-            for(int i = 0; i <  canvas.width; i++){
-                pixels[row_start * canvas.width + i] = vec3( pixel_row[i * 3], pixel_row[i * 3 + 1], pixel_row[i * 3 + 2]);
+                    //camera ray
+                    Ray r(vec3(0,0,-10), vec3(u, -v,v_depth));
+                    color += trace(r, scene, 0, 3, &seed);
+                }
+                //int index = y * canvas.width + x;
+                color = color/samples;
+                int index = y * canvas.width + x;
+                pixels[index] = color;
             }
         }
 
+    //array of doubles for sending over MPI
+    double *row = new double[canvas.width * 3];
+
+    //convert rows to doubles, send rows to process zero
+    if (my_rank != 0){
+        
+          for (int y = my_rank; y < canvas.height; y = y + comm_sz){
+              int row_start = y * canvas.width;
+              for (int i = 0; i < canvas.width; i++){
+                  row[i * 3] = pixels[row_start + i].x;
+                  row[i * 3 + 1] = pixels[row_start + i].y;
+                  row[i * 3 + 2] = pixels[row_start + i].z;
+              }
+
+              MPI_Send(row, canvas.width * 3, MPI_DOUBLE, 0, y, comm);
+          }
+    } else {
+
+       MPI_Status status; 
+
+        for (int y = 0; y < canvas.height; y++){
+            if (y % comm_sz == 0) {continue;}
+
+            MPI_Recv(row, 3 * canvas.width, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
+            int row_num = status.MPI_TAG;
+
+             for(int i = 0; i <  canvas.width; i++){
+                pixels[row_num * canvas.width + i] = vec3( row[i * 3], row[i * 3 + 1], row[i * 3 + 2]);
+            }
+        }
+    }
+
+      
+
+    if (my_rank == 0){
         //tonemapping and file saving
         #pragma omp parallel for num_threads(num_threads)
         for (int y = 0; y < canvas.height; y++){
@@ -138,7 +150,6 @@ int main(int argc, char** argv){
         std::cout << "Render Time: " << double(elapsed.count()) / 1000 << " seconds" << std::endl;
         std::cout << "Saving image..." << std::endl;
         canvas.savePPM(filename);
-      
     }
     MPI_Barrier(comm);
     return 0;
