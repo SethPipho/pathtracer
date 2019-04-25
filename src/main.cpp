@@ -23,20 +23,28 @@ int main(int argc, char** argv){
     MPI_Comm_size(comm, &comm_sz);
     MPI_Comm_rank(comm, &my_rank);
 
+    std::string input_file = "";
     std::string filename = "render/mpi-v2-test.ppm";
     int samples = 100;
     int img_width = 512;
     int num_threads = 1;
 
     CLI::App app{"App description"};
+    app.add_option("-i,--input", input_file, "Path of input file (.scene)");
     app.add_option("-o,--output", filename, "Path of output file (ppm image)");
     app.add_option("-s,--samples", samples, "Number of samples per pixel");
     app.add_option("-w,--width", img_width, "Width of image in pixels");
     app.add_option("-t,--threads", num_threads, "Number of threads");
     CLI11_PARSE(app, argc, argv);
 
+    if (input_file == ""){
+        std::cout << "No input file" << std::endl;
+        return 0;
+    }
+
 
     if (my_rank == 0){
+        std::cout << input_file << std::endl;
         std::cout << "Rendering to: '" << filename << "'" << std::endl;
         std::cout << img_width << " x " << img_width << std::endl;
         std::cout << "Samples: " << samples << std::endl;
@@ -44,32 +52,17 @@ int main(int argc, char** argv){
     }
 
     Canvas canvas(img_width, img_width);
-    
-    double wall_r = 100000; //radius for wall spheres
-
-    Scene scene;
-    scene.addObject(new Sphere(vec3(1.5, -3, 10), 1, rgbToVec(230, 126, 34), DIFFUSE)); //orange
-    scene.addObject(new Sphere(vec3(-1, -2.5, 11), 1.5, rgbToVec(200, 200, 200), DIFFUSE)); //white
-
-    scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //top wall
-    scene.addObject(new Sphere(vec3(0, -wall_r - 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //bottom
-    scene.addObject(new Sphere(vec3(wall_r + 4, 0, 0), wall_r, rgbToVec(52, 152, 219), DIFFUSE)); //right Wall
-    scene.addObject(new Sphere(vec3(-wall_r - 4, 0, 0), wall_r, rgbToVec(231, 76, 60), DIFFUSE)); //left wall
-    scene.addObject(new Sphere(vec3(0, 0, wall_r + 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //far wall
-    scene.addObject(new Sphere(vec3(0, 0, -wall_r - 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //back wall
-
-    scene.addObject(new Triangle(vec3(-3,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10), rgbToVec(150,150,150)));
-    scene.addObject(new Triangle(vec3(-1,-1.5, 9), vec3(1,-1.5, 11),  vec3(-1,.5,10), rgbToVec(150,150,150)));
-    scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10),rgbToVec(150,150,150)));
+    Scene scene(input_file);
    
     vec3* pixels = new vec3[canvas.width * canvas.height];
 
     auto start = std::chrono::high_resolution_clock::now();
     
+    #pragma omp parallel for schedule(static,1) num_threads(num_threads)
     for (int y = my_rank; y < canvas.height; y = y + comm_sz){
         //each thread needs seed for call to rand_r() because rand() is locking
         unsigned int seed = y;
-      //  #pragma omp parallel for schedule(static,1) 
+      
             for (int x = 0; x < canvas.width; x++){
                 vec3 color(0,0,0);
                 for (int i = 0; i < samples; i++){

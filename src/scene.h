@@ -4,6 +4,7 @@
 #include <vector>
 #include "vec.h"
 #include "ray.h"
+#include "util.h"
 
 enum Material {DIFFUSE, MIRROR, EMISSION};
 
@@ -104,6 +105,7 @@ vec3 Triangle::computeHit(vec3& hit){
 
 
 
+
 class Scene {
     public:
         std::vector<Intersectable*> objects;
@@ -111,7 +113,63 @@ class Scene {
         void addObject(Intersectable* o){
             objects.push_back(o);
         }
+
+        Scene(){}
+        Scene(std::string path){
+            std::cout << path << std::endl;
+            std::ifstream file(path, std::ios::in);
+
+            std::string object;
+            
+           while(file >> object){ 
+                if (object[0] == '#'){continue;}
+
+                if (object == "sphere"){
+                
+                    double radius;
+                    int r,g,b;
+
+                    vec3 pos;
+
+                    file >> pos.x;
+                    file >> pos.y;
+                    file >> pos.z;
+                    file >> radius;
+                    file >> r;
+                    file >> g;
+                    file >> b;
+
+                    addObject(new Sphere(pos, radius, rgbToVec(r,g,b), DIFFUSE));
+                }
+
+                if (object == "triangle"){
+                    vec3 v0,v1,v2;
+                    int r,g,b;
+
+                    file >> v0.x;
+                    file >> v0.y;
+                    file >> v0.z;
+
+                    file >> v1.x;
+                    file >> v1.y;
+                    file >> v1.z;
+
+                    file >> v2.x;
+                    file >> v2.y;
+                    file >> v2.z;
+
+                    file >> r;
+                    file >> g;
+                    file >> b;
+
+                    addObject(new Triangle(v0,v1,v2, rgbToVec(r,g,b)));
+                }
+           }
+
+            
+        }
 };
+
 
 
 #endif
