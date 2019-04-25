@@ -5,11 +5,11 @@ template = "sphere {} {} {} {} 200 200 200"
 
 f = open(path, "w")
 
-for i in range(50):
-  x = random.uniform(-4,4)
+for i in range(20):
+  x = random.uniform(-2,2)
   y = random.uniform(-4, 4)
-  z = random.uniform(7,15)
-  radius = random.uniform(.3,1.5)
+  z = random.uniform(9,12)
+  radius = random.uniform(.5, 1.5)
   f.write(template.format(x,y,z,radius) + "\n")
 
 
