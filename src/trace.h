@@ -52,7 +52,7 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
 
     //light radius
     double light_radius = 1;
-    vec3 light = vec3(0,2, 9) + uniformRandomSampleUnitSphere(seed) * light_radius; //random jitter light to get soft shadows
+    vec3 light = vec3(1,3, 4) + uniformRandomSampleUnitSphere(seed) * light_radius; //random jitter light to get soft shadows
     vec3 light_color(1,1,1);
     double light_intensity = 3;
     vec3 world_color(.8,.8,.8);

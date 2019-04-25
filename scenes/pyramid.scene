@@ -1,0 +1,44 @@
+#sphere x y z radius red green blue
+#triangle v0.x v0.y v0.z v1.x v1.y v1.z v2.x v2.y v2.z red green blue
+
+triangle -3 -1.5 11 -1 -1.5 9 -1 .5 10 150 150 150
+triangle -1 -1.5 9 1 -1.5 11 -1 .5 10 150 150 150
+triangle 1 -1.5 11 -1 -1.5 9 -1 .5 10 150 150 150
+
+sphere 1.5 -3 10 1 230 126 34
+sphere -1 -2.5 11 1.5 200 200 200 
+
+
+#top bottom
+sphere 0 100004 0 100000 200 200 200
+sphere 0 -100004  0 100000 200 200 200
+
+#right left
+sphere  100004 0 0 100000 52 152 219
+sphere -100004 0 0 100000 231 76 60
+
+#far
+sphere 0 0 100020 100000 200 200 200 
+
+#near
+sphere 0 0 -100020 100000 200 200 200 
+
+
+
+  /*
+    Scene scene;
+    scene.addObject(new Sphere(vec3(1.5, -3, 10), 1, rgbToVec(230, 126, 34), DIFFUSE)); //orange
+    scene.addObject(new Sphere(vec3(-1, -2.5, 11), 1.5, rgbToVec(200, 200, 200), DIFFUSE)); //white
+
+    scene.addObject(new Sphere(vec3(0, wall_r + 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //top wall
+    scene.addObject(new Sphere(vec3(0, -wall_r - 4, 0), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //bottom
+    scene.addObject(new Sphere(vec3(wall_r + 4, 0, 0), wall_r, rgbToVec(52, 152, 219), DIFFUSE)); //right Wall
+    scene.addObject(new Sphere(vec3(-wall_r - 4, 0, 0), wall_r, rgbToVec(231, 76, 60), DIFFUSE)); //left wall
+    scene.addObject(new Sphere(vec3(0, 0, wall_r + 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //far wall
+    scene.addObject(new Sphere(vec3(0, 0, -wall_r - 20), wall_r, rgbToVec(200, 200, 200), DIFFUSE)); //back wall
+
+    scene.addObject(new Triangle(vec3(-3,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10), rgbToVec(106, 176, 76)));
+    scene.addObject(new Triangle(vec3(-1,-1.5, 9), vec3(1,-1.5, 11),  vec3(-1,.5,10), rgbToVec(106, 176, 76)));
+    scene.addObject(new Triangle(vec3(1,-1.5, 11), vec3(-1,-1.5, 9), vec3(-1,.5,10),rgbToVec(106, 176, 76)));
+   */
+  

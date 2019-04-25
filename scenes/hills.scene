@@ -1,0 +1,6 @@
+#sphere x y z radius red green blue
+
+sphere 0 -12 10 10 100 200 100
+sphere -4 -12 10 10 100 200 100
+
+

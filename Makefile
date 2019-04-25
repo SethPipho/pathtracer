@@ -1,5 +1,5 @@
 main: src/main.cpp src/scene.h src/vec.h src/trace.h
-	g++  -std=c++11 -Wall -O3 -ffast-math -fopenmp -o main src/main.cpp
+	g++ -std=c++11 -Wall -O3 -fopenmp -o main src/main.cpp
 
 clean:
 	rm -f ./main
