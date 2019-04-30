@@ -45,6 +45,13 @@ int main(int argc, char** argv){
     Canvas canvas(img_width, img_width);
     Scene scene(input_file);
 
+
+    //set scene light
+    scene.light_pos =  vec3(-1,-1,4);
+    scene.light_color = vec3(1,1,1);
+    scene.light_intensity = 3;
+    scene.light_radius = 1;
+
     auto start = std::chrono::high_resolution_clock::now();
    
     //array of vectors to hold raw colors

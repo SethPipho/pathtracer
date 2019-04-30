@@ -50,12 +50,7 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
         return vec3(0,0,0);
     }
 
-    //light radius
-    double light_radius = 1;
-    vec3 light = vec3(0,0, 14) + uniformRandomSampleUnitSphere(seed) * light_radius; //random jitter light to get soft shadows
-    vec3 light_color(1,1,1);
-    double light_intensity = 3;
-    vec3 world_color(.8,.8,.8);
+   
 
 
     Intersectable *nearest = nullptr;
@@ -63,7 +58,7 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     bool ray_hit = nearestIntersection(scene, r, &nearest, &toi);
     
     if (!ray_hit){
-        return world_color;
+        return scene.world_color;
     }
 
     if (nearest->material == EMISSION){
@@ -83,6 +78,7 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     vec3 indirect = trace(indirect_ray, scene, depth + 1, max_depth, seed);
 
     //explicit light sampling
+    vec3 light = scene.light_pos + uniformRandomSampleUnitSphere(seed) * scene.light_radius; //random jitter light to get soft shadows
     vec3 to_light = light - hit;
     vec3 light_dir = unit(to_light);
     double light_dist = to_light.length();
@@ -101,7 +97,7 @@ vec3 trace(Ray &r, Scene &scene, int depth, int max_depth, unsigned int *seed){
     if (is_shadow){
         direct = vec3(0,0,0);
     } else {
-        direct = (light_color * light_intensity * dot(normal, light_dir)/light_dist);
+        direct = (scene.light_color * scene.light_intensity * dot(normal, light_dir)/light_dist);
     }
     
      return nearest->color * (indirect + direct);

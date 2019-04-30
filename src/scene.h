@@ -107,9 +107,17 @@ vec3 Triangle::computeHit(vec3& hit){
 
 
 
+
 class Scene {
     public:
+        vec3 world_color = vec3(.8,8,.8);
         std::vector<Intersectable*> objects;
+        vec3 light_pos;
+        vec3 light_color;
+        double light_radius;
+        double light_intensity;
+      
+
 
         void addObject(Intersectable* o){
             objects.push_back(o);
