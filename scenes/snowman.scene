@@ -1,0 +1,19 @@
+#sphere x y z radius red green blue
+
+sphere -1 -2.5 11 1.5 200 200 200
+sphere -1 -1 11 1 200 200 200  
+sphere -1 0 11 .6 200 200 200  
+
+#top bottom
+sphere 0 100004 0 100000 200 200 200
+sphere 0 -100004  0 100000 200 200 200
+
+#right left
+sphere  100004 0 0 100000 52 152 219
+sphere -100004 0 0 100000 231 76 60
+
+#far
+sphere 0 0 100020 100000 200 200 200 
+
+
+ 
